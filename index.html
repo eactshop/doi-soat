@@ -6,6 +6,7 @@
   <title>Admin — Quản lý đơn hàng tiktok</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -590,6 +591,95 @@
     .ads-del:hover { background: rgba(240,90,90,0.15); color: var(--red); }
 
     /* Animations */
+    
+    /* ── Trạng thái đơn ── */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+      font-family: var(--font-body);
+    }
+    .status-badge.complete  { background: rgba(62,207,142,0.12); color: var(--green); border: 1px solid rgba(62,207,142,0.25); }
+    .status-badge.returned  { background: rgba(240,90,90,0.12);  color: var(--red);   border: 1px solid rgba(240,90,90,0.25); }
+    .status-badge.shipping  { background: rgba(79,142,247,0.12); color: var(--blue);  border: 1px solid rgba(79,142,247,0.25); }
+    .status-badge.cancelled { background: rgba(107,114,128,0.15); color: var(--muted); border: 1px solid var(--border); }
+    .status-badge.pending   { background: rgba(240,160,80,0.12); color: var(--accent); border: 1px solid rgba(240,160,80,0.25); }
+
+    /* ── Status page ── */
+    .status-upload-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 36px; text-align: center; cursor: pointer;
+      transition: all 0.2s; background: var(--bg);
+    }
+    .status-upload-zone:hover, .status-upload-zone.dov {
+      border-color: var(--accent); background: rgba(240,160,80,0.04);
+    }
+    .status-upload-zone .uz-icon { font-size: 36px; margin-bottom: 8px; }
+    .status-upload-zone p { color: var(--muted); font-size: 13px; }
+    .status-upload-zone small { color: var(--muted); font-size: 11px; opacity: 0.6; }
+
+    .status-page-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 860px) { .status-page-grid { grid-template-columns: 1fr; } }
+
+    .status-result-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px; margin-bottom: 16px;
+    }
+    .status-result-card h4 {
+      font-family: var(--font-head); font-size: 14px; font-weight: 700;
+      color: var(--text); margin-bottom: 14px;
+    }
+    .status-stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 16px; }
+    .status-stat {
+      padding: 12px 14px; border-radius: 8px; text-align: center;
+      background: var(--surface2); border: 1px solid var(--border);
+    }
+    .status-stat .s-val { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+    .status-stat .s-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .status-stat.green .s-val { color: var(--green); }
+    .status-stat.red   .s-val { color: var(--red); }
+    .status-stat.blue  .s-val { color: var(--blue); }
+    .status-stat.muted .s-val { color: var(--muted); }
+    .status-stat.orange .s-val { color: var(--accent); }
+
+    .btn-apply-status {
+      padding: 10px 20px; background: var(--green); color: #0a1f14;
+      border: none; border-radius: 8px; font-family: var(--font-body);
+      font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-apply-status:hover { background: #5dffb3; }
+    .btn-export-unmatched {
+      padding: 10px 20px; background: transparent; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 8px;
+      font-family: var(--font-body); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; margin-left: 8px;
+    }
+    .btn-export-unmatched:hover { border-color: var(--red); color: var(--red); }
+
+    .unmatched-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .unmatched-table th {
+      padding: 8px 14px; text-align: left; font-size: 10px; font-weight: 600;
+      letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+      background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border);
+    }
+    .unmatched-table td {
+      padding: 9px 14px; font-size: 12px; border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+    .unmatched-table tr:last-child td { border-bottom: none; }
+    .unmatched-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .status-filter-bar {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .status-filter-bar select, .status-filter-bar input {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 7px 12px; font-family: var(--font-body); font-size: 12px;
+      color: var(--text); outline: none; transition: border-color 0.2s;
+    }
+    .status-filter-bar select:focus, .status-filter-bar input:focus { border-color: var(--accent); }
+    .status-filter-bar input { width: 200px; }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(16px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -832,6 +922,9 @@
     <a class="nav-item" id="nav-ads" onclick="showPage('ads')">
       <span class="icon">📣</span> Chi phí ADS
     </a>
+    <a class="nav-item" id="nav-status" onclick="showPage('status')">
+      <span class="icon">🚚</span> Trạng thái đơn
+    </a>
   </nav>
   <div class="sidebar-footer">v1.0 · Google Sheets</div>
 </aside>
@@ -844,6 +937,7 @@
     <div class="topbar-title">Báo cáo tổng hợp đơn hàng</div>
     <div class="topbar-right">
       <div class="status-dot" id="statusDot" title="Trạng thái kết nối"></div>
+      <button class="config-btn" onclick="openSheetConfig()">⚙️ Sheet URL</button>
       <button class="refresh-btn" onclick="loadData()">
         <span class="icon" id="refreshIcon">↻</span> Làm mới
       </button>
@@ -1066,6 +1160,103 @@
       </div>
     </div><!-- end page-ads -->
 
+
+    <!-- ══ STATUS PAGE ══ -->
+    <div class="page" id="page-status">
+      <div class="ads-page-header">
+        <div class="ads-page-title">🚚 Trạng thái <span style="color:var(--blue)">Đơn Hàng</span></div>
+      </div>
+
+      <div class="status-page-grid">
+        <!-- Upload SuperShip -->
+        <div class="status-result-card" style="margin-bottom:0">
+          <h4>🚀 Upload file SuperShip</h4>
+          <div class="status-upload-zone" id="ssStatusZone"
+               onclick="document.getElementById('ssStatusFile').click()"
+               ondragover="event.preventDefault();this.classList.add('dov')"
+               ondragleave="this.classList.remove('dov')"
+               ondrop="dropStatusFile(event,'ss')">
+            <div class="uz-icon">📊</div>
+            <p><strong>Chọn file Excel SuperShip</strong></p>
+            <small>Xuất từ SuperShip → Đơn Hàng → Xuất Excel</small>
+          </div>
+          <input type="file" id="ssStatusFile" style="display:none" accept=".xlsx,.xls" onchange="loadStatusFile(event,'ss')">
+          <div id="ssStatusInfo" style="display:none;margin-top:10px;font-size:12px;color:var(--green)"></div>
+        </div>
+
+        <!-- Upload ViettelPost -->
+        <div class="status-result-card" style="margin-bottom:0">
+          <h4>📮 Upload file ViettelPost</h4>
+          <div class="status-upload-zone" id="vtStatusZone"
+               onclick="document.getElementById('vtStatusFile').click()"
+               ondragover="event.preventDefault();this.classList.add('dov')"
+               ondragleave="this.classList.remove('dov')"
+               ondrop="dropStatusFile(event,'vt')">
+            <div class="uz-icon">📮</div>
+            <p><strong>Chọn file Excel ViettelPost</strong></p>
+            <small>My_sent_parcel... — xuất từ ViettelPost</small>
+          </div>
+          <input type="file" id="vtStatusFile" style="display:none" accept=".xlsx,.xls" onchange="loadStatusFile(event,'vt')">
+          <div id="vtStatusInfo" style="display:none;margin-top:10px;font-size:12px;color:var(--green)"></div>
+        </div>
+      </div>
+
+      <!-- Result section (hidden until file loaded) -->
+      <div id="statusResultSection" style="display:none">
+        <div class="status-result-card">
+          <h4>📊 Kết quả đối chiếu</h4>
+          <div class="status-stats-row" id="statusStatsRow"></div>
+          <div id="statusSummaryText" style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.8;"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn-apply-status" onclick="applyStatusUpdate()">✅ Cập nhật trạng thái vào bảng</button>
+            <button class="btn-export-unmatched" onclick="exportUnmatchedStatus()">⬇️ Xuất đơn chưa đối chiếu được</button>
+            <button onclick="resetStatusUpload()" style="padding:10px 16px;background:transparent;border:1px solid var(--border);border-radius:8px;color:var(--muted);font-family:var(--font-body);font-size:12px;cursor:pointer;margin-left:auto;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🔄 Upload lại</button>
+          </div>
+        </div>
+
+        <!-- Matched orders preview -->
+        <div class="status-result-card">
+          <h4>✅ Đơn đối chiếu được <span id="matchedCountLabel" style="color:var(--green);font-size:13px;font-weight:700"></span></h4>
+          <div class="status-filter-bar">
+            <input type="text" id="statusSearch" placeholder="🔍 Tìm SĐT, tên..." oninput="renderStatusTable()">
+            <select id="statusCatFilter" onchange="renderStatusTable()">
+              <option value="">Tất cả trạng thái</option>
+              <option value="complete">✅ Giao thành công</option>
+              <option value="returned">🔄 Hoàn hàng</option>
+              <option value="shipping">🚛 Đang giao</option>
+              <option value="cancelled">🚫 Đã huỷ</option>
+              <option value="pending">⏳ Đang xử lý</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border);">
+            <table class="unmatched-table" id="statusMatchedTable">
+              <thead><tr>
+                <th>#</th><th>Họ tên</th><th>SĐT</th><th>Sản phẩm</th>
+                <th>Trạng thái cũ</th><th>Trạng thái mới</th><th>Mã đơn VC</th>
+              </tr></thead>
+              <tbody id="statusMatchedBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Unmatched orders -->
+        <div class="status-result-card">
+          <h4>❌ Chưa đối chiếu được <span id="unmatchedCountLabel" style="color:var(--red);font-size:13px;font-weight:700"></span></h4>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">SĐT không tìm thấy trong file vận chuyển — để ở trạng thái <strong style="color:var(--accent)">Chưa đối chiếu</strong></p>
+          <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border);max-height:300px;overflow-y:auto;">
+            <table class="unmatched-table" id="statusUnmatchedTable">
+              <thead><tr>
+                <th>#</th><th>Họ tên</th><th>SĐT</th><th>Sản phẩm</th><th>Giá</th><th>Trạng thái hiện tại</th>
+              </tr></thead>
+              <tbody id="statusUnmatchedBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end page-status -->
+
+
   </div><!-- end content -->
 </div><!-- end main -->
 
@@ -1083,13 +1274,19 @@
   <button class="bottom-nav-item" id="bn-ads" onclick="showPage('ads')">
     <span class="bn-icon">📣</span>ADS
   </button>
+  <button class="bottom-nav-item" id="bn-status" onclick="showPage('status')">
+    <span class="bn-icon">🚚</span>Trạng thái
+  </button>
 </nav>
 
 <script>
 // ═══════════════════════════════════════
 //  CONFIG & STATE
 // ═══════════════════════════════════════
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbw4tM910iaMz-oKkrTbHwMauQBnU0uFgA53rcMSIznHCn7SNMND5z_SM9-TVMotpYTeIA/exec';
+const SHEET_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbxMX7xhAHh0KQaHSpQJN-wmCpLOgZ0_gw1P0tcZts9j6CsAq2pkYJ0md-kKDa3-W6h2tQ/exec';
+let SHEET_URL_CURRENT = localStorage.getItem('admin_sheet_url') || SHEET_URL_DEFAULT;
+// Alias for backward compat
+Object.defineProperty(window, 'SHEET_URL', { get: () => SHEET_URL_CURRENT });
 let allOrders = [];
 let lineChart = null;
 let doughnutChart = null;
@@ -1100,22 +1297,58 @@ let doughnutChart = null;
 async function loadData() {
   setRefreshing(true);
   document.getElementById('demoBanner').classList.add('hidden');
+  console.log('[loadData] Fetching via JSONP:', SHEET_URL_CURRENT);
   try {
-    const res = await fetch(SHEET_URL);
-    const data = await res.json();
+    const data = await fetchJSONP(SHEET_URL_CURRENT);
+
+    if (!Array.isArray(data)) {
+      showError(`❌ <strong>Apps Script trả về sai format</strong>.<br><small>Nhận được: ${JSON.stringify(data).slice(0,150)}</small>`);
+      processOrders([], false);
+      setRefreshing(false);
+      return;
+    }
+
+    if (data.length === 0) {
+      showError('⚠️ <strong>Sheet trống</strong> — Kết nối OK nhưng không có đơn hàng nào trong Sheet.');
+    } else {
+      document.getElementById('demoBanner').classList.add('hidden');
+      document.getElementById('demoBanner').removeAttribute('style');
+    }
+
     document.getElementById('statusDot').classList.remove('offline');
     data.forEach(row => {
       row._date = parseViDate(row['Thời gian'] || row['Thoi gian'] || '');
     });
     processOrders(data.sort((a,b) => b._date - a._date), false);
+
   } catch(err) {
+    console.error('[loadData] Error:', err.message);
     document.getElementById('statusDot').classList.add('offline');
-    document.getElementById('demoBanner').classList.remove('hidden');
-    const bannerSpan = document.getElementById('demoBanner').querySelector('span');
-    if (bannerSpan) bannerSpan.innerHTML = '⚠️ <strong>Không thể kết nối Sheet</strong> — Kiểm tra lại Apps Script URL và quyền truy cập.';
+    showError(`❌ <strong>Không kết nối được Sheet</strong><br>
+      <small style="line-height:1.8">
+        Lỗi: ${err.message}<br>
+        👉 Cần cập nhật <strong>Apps Script</strong> để hỗ trợ JSONP callback.<br>
+        Xem hướng dẫn bên dưới.
+      </small>
+    `);
     processOrders([], false);
   }
   setRefreshing(false);
+}
+
+function showError(html) {
+  const banner = document.getElementById('demoBanner');
+  banner.classList.remove('hidden');
+  banner.style.background = 'rgba(240,90,90,0.08)';
+  banner.style.borderColor = 'rgba(240,90,90,0.4)';
+  banner.style.color = 'var(--red)';
+  banner.innerHTML = `
+    <div style="flex:1">${html}</div>
+    <div style="display:flex;gap:8px;flex-shrink:0;margin-top:4px;">
+      <button onclick="loadData()" style="padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;font-family:var(--font-body)">↻ Thử lại</button>
+      <button onclick="openSheetConfig()" style="padding:6px 14px;background:rgba(240,160,80,0.15);border:1px solid rgba(240,160,80,0.4);border-radius:6px;color:var(--accent);font-size:12px;cursor:pointer;font-family:var(--font-body)">⚙️ Đổi URL</button>
+    </div>
+  `;
 }
 
 function fakeSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1482,7 +1715,7 @@ function renderPage() {
     <thead><tr>
       <th>#</th><th>Họ tên</th><th>SĐT</th><th>Địa chỉ</th>
       <th>Sản phẩm</th><th>Giá</th><th>COD</th><th>Phí ship</th>
-      <th>Lợi nhuận/đơn</th><th>Cân nặng</th><th>Thời gian</th>
+      <th>Lợi nhuận/đơn</th><th>Cân nặng</th><th>Trạng thái</th><th>Thời gian</th>
     </tr></thead><tbody>`;
 
   // ── Mobile cards ──
@@ -1508,6 +1741,7 @@ function renderPage() {
       <td style="color:var(--muted)">${ship ? ship.toLocaleString('vi-VN')+'đ' : '—'}</td>
       <td style="color:${ln>0?'var(--green)':ln<0?'var(--red)':'var(--muted)'};font-weight:700">${ln ? ln.toLocaleString('vi-VN')+'đ' : '—'}</td>
       <td>${r.weight||'—'} kg</td>
+      <td>${renderStatusBadge(r._raw._status)}</td>
       <td class="td-time">${r.time||'—'}</td>
     </tr>`;
 
@@ -1523,6 +1757,7 @@ function renderPage() {
       </div>
       <div class="order-card-row">
         <span class="order-card-badge">${r.product||'—'}</span>
+        ${renderStatusBadge(r._raw._status)}
         ${r.weight ? `<span style="font-size:11px;color:var(--muted);padding:3px 6px">⚖ ${r.weight} kg</span>` : ''}
       </div>
       <div class="order-card-grid">
@@ -1639,13 +1874,13 @@ function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  const navMap = { dashboard: 'nav-dashboard', ads: 'nav-ads' };
+  const navMap = { dashboard: 'nav-dashboard', ads: 'nav-ads', status: 'nav-status' };
   if (navMap[name]) document.getElementById(navMap[name]).classList.add('active');
   if (name === 'ads') renderAdsPage();
 
   // Sync bottom nav
   document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
-  const bnMap = { dashboard: 'bn-dashboard', ads: 'bn-ads' };
+  const bnMap = { dashboard: 'bn-dashboard', ads: 'bn-ads', status: 'bn-status' };
   if (bnMap[name]) document.getElementById(bnMap[name]).classList.add('active');
 }
 
@@ -1797,6 +2032,403 @@ document.getElementById('filter-from').value = _today;
 document.getElementById('filter-to').value   = _today;
 loadData();
 setTimeout(initKpiDots, 300);
+
+
+// ═══════════════════════════════════════
+//  TRẠNG THÁI ĐƠN — STATUS MANAGEMENT
+// ═══════════════════════════════════════
+
+// Lưu trạng thái theo SĐT: { phone: { status, statusName, orderCode, source } }
+let statusDatabase = {};
+// Kết quả đối chiếu gần nhất
+let lastMatchedOrders = [];
+let lastUnmatchedOrders = [];
+
+// ── Map trạng thái SuperShip (text → category) ──
+const SS_STATUS_MAP = {
+  'Đã Giao Hàng Toàn Bộ': 'complete', 'Đã Giao Hàng Một Phần': 'complete',
+  'Đã Đối Soát Giao Hàng': 'complete',
+  'Đã Trả Hàng': 'returned', 'Đã Đối Soát Trả Hàng': 'returned',
+  'Xác Nhận Hoàn': 'returned', 'Hàng Thất Lạc': 'returned',
+  'Đã Bồi Hoàn': 'returned', 'Không Trả Được': 'returned',
+  'Đang Giao Hàng': 'shipping', 'Đang Lấy Hàng': 'shipping',
+  'Đã Lấy Hàng': 'shipping', 'Đang Nhập Kho': 'shipping',
+  'Đang Chuyển Kho Giao': 'shipping', 'Đã Chuyển Kho Giao': 'shipping',
+  'Đang Trả Hàng': 'shipping', 'Đang Chuyển Kho Trả': 'shipping',
+  'Không Giao Được': 'shipping', 'Hoãn Giao Hàng': 'shipping',
+  'Chờ Duyệt': 'pending', 'Chờ Lấy Hàng': 'pending', 'Lưu Kho': 'pending',
+  'Huỷ': 'cancelled',
+};
+
+// ── Map trạng thái ViettelPost ──
+const VT_STATUS_MAP = {
+  'giao hàng thành công': 'complete', 'đã giao hàng': 'complete', 'phát thành công': 'complete',
+  'trên đường': 'shipping', 'đang giao hàng': 'shipping', 'đang lấy hàng': 'shipping',
+  'đã lấy hàng': 'shipping', 'tại kho': 'shipping', 'đang xử lý': 'shipping',
+  'hoàn hàng': 'returned', 'đã hoàn': 'returned', 'hoàn thành công': 'returned',
+  'huỷ': 'cancelled', 'hủy': 'cancelled',
+  'chờ lấy': 'pending',
+};
+
+const STATUS_LABEL = {
+  complete:  '✅ Giao thành công',
+  returned:  '🔄 Hoàn hàng',
+  shipping:  '🚛 Đang giao',
+  cancelled: '🚫 Đã huỷ',
+  pending:   '⏳ Đang xử lý',
+  unknown:   '❓ Chưa đối chiếu',
+};
+
+function renderStatusBadge(status) {
+  if (!status) return '<span class="status-badge pending">⏳ Chưa đối chiếu</span>';
+  const cat = status._cat || 'unknown';
+  const label = status._label || STATUS_LABEL[cat] || status._label || '—';
+  const cls = ['complete','returned','shipping','cancelled','pending'].includes(cat) ? cat : 'pending';
+  return `<span class="status-badge ${cls}">${label}</span>`;
+}
+
+function normPhone(p) {
+  return String(p || '').replace(/\D/g, '').replace(/^84/, '0').slice(-10);
+}
+
+// ── Drag/drop ──
+function dropStatusFile(e, type) {
+  e.preventDefault();
+  document.getElementById(type === 'ss' ? 'ssStatusZone' : 'vtStatusZone').classList.remove('dov');
+  const f = e.dataTransfer.files[0];
+  if (f) processStatusFile(f, type);
+}
+function loadStatusFile(e, type) {
+  const f = e.target.files[0];
+  if (f) processStatusFile(f, type);
+}
+
+function processStatusFile(file, type) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, raw: false });
+      const headers = (rows[0] || []).map(h => String(h || '').trim());
+      const ci = (n) => headers.findIndex(h => h.includes(n));
+
+      let parsed = [];
+      if (type === 'ss') {
+        const C = {
+          order_id: ci('Mã Đơn Hàng'), status: ci('Trạng Thái'),
+          phone: ci('Số Điện Thoại'), name: ci('Người Nhận'),
+        };
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || !r[C.phone]) continue;
+          const statusTxt = String(r[C.status] || '').trim();
+          parsed.push({
+            phone: String(r[C.phone] || '').trim(),
+            name: String(r[C.name] || '').trim(),
+            orderCode: String(r[C.order_id] || '').trim(),
+            statusRaw: statusTxt,
+            cat: SS_STATUS_MAP[statusTxt] || 'pending',
+            source: 'SuperShip',
+          });
+        }
+        document.getElementById('ssStatusInfo').style.display = 'block';
+        document.getElementById('ssStatusInfo').textContent = `✅ Đọc ${parsed.length} đơn từ ${file.name}`;
+      } else {
+        const C = {
+          order_id: ci('Mã vận đơn'), status: ci('Trạng thái'),
+          phone: ci('Điện thoại của người nhận'), name: ci('Tên người nhận'),
+        };
+        for (let i = 1; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || !r[C.phone]) continue;
+          const statusTxt = String(r[C.status] || '').trim();
+          parsed.push({
+            phone: String(r[C.phone] || '').trim(),
+            name: String(r[C.name] || '').trim(),
+            orderCode: String(r[C.order_id] || '').trim(),
+            statusRaw: statusTxt,
+            cat: VT_STATUS_MAP[statusTxt.toLowerCase()] || 'pending',
+            source: 'ViettelPost',
+          });
+        }
+        document.getElementById('vtStatusInfo').style.display = 'block';
+        document.getElementById('vtStatusInfo').textContent = `✅ Đọc ${parsed.length} đơn từ ${file.name}`;
+      }
+
+      // Build phone → status map (latest wins if duplicate)
+      const phoneMap = {};
+      parsed.forEach(p => {
+        const norm = normPhone(p.phone);
+        if (norm) phoneMap[norm] = p;
+      });
+
+      // Match against allOrders
+      matchStatusWithOrders(phoneMap, type);
+    } catch (err) {
+      alert('Lỗi đọc file: ' + err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function matchStatusWithOrders(phoneMap, source) {
+  if (!allOrders.length) {
+    alert('Chưa có dữ liệu đơn hàng! Vui lòng tải dữ liệu trước.');
+    return;
+  }
+  const allRows = allOrders.map(normalize);
+  lastMatchedOrders = [];
+  lastUnmatchedOrders = [];
+
+  allRows.forEach(r => {
+    const phone = normPhone(r.phone);
+    const hit = phoneMap[phone];
+    if (hit) {
+      lastMatchedOrders.push({
+        row: r,
+        oldStatus: r._raw._status,
+        newStatus: { _cat: hit.cat, _label: hit.statusRaw, _orderCode: hit.orderCode, _source: hit.source },
+        orderCode: hit.orderCode,
+      });
+    } else {
+      lastUnmatchedOrders.push(r);
+    }
+  });
+
+  renderStatusResult(source);
+  document.getElementById('statusResultSection').style.display = 'block';
+}
+
+function renderStatusResult(source) {
+  const total   = allOrders.length;
+  const matched = lastMatchedOrders.length;
+  const unmatched = lastUnmatchedOrders.length;
+
+  // Stats
+  const catCount = {};
+  lastMatchedOrders.forEach(m => {
+    const c = m.newStatus._cat; catCount[c] = (catCount[c]||0) + 1;
+  });
+
+  document.getElementById('statusStatsRow').innerHTML = `
+    <div class="status-stat green"><div class="s-val">${matched}</div><div class="s-lbl">Đối chiếu được</div></div>
+    <div class="status-stat red"><div class="s-val">${unmatched}</div><div class="s-lbl">Chưa khớp</div></div>
+    <div class="status-stat blue"><div class="s-val">${Math.round(matched/total*100)}%</div><div class="s-lbl">Tỉ lệ khớp</div></div>
+    <div class="status-stat green"><div class="s-val">${catCount.complete||0}</div><div class="s-lbl">Giao thành công</div></div>
+    <div class="status-stat red"><div class="s-val">${catCount.returned||0}</div><div class="s-lbl">Hoàn hàng</div></div>
+    <div class="status-stat orange"><div class="s-val">${catCount.shipping||0}</div><div class="s-lbl">Đang giao</div></div>
+  `;
+
+  document.getElementById('statusSummaryText').innerHTML =
+    `📦 Nguồn: <strong>${source === 'ss' ? 'SuperShip' : 'ViettelPost'}</strong> &nbsp;·&nbsp;` +
+    `✅ <strong>${matched}/${total}</strong> đơn khớp SĐT &nbsp;·&nbsp;` +
+    `❌ <strong>${unmatched}</strong> đơn chưa tìm thấy → giữ trạng thái <em>Chưa đối chiếu</em>`;
+
+  document.getElementById('matchedCountLabel').textContent = `(${matched})`;
+  document.getElementById('unmatchedCountLabel').textContent = `(${unmatched})`;
+
+  renderStatusTable();
+  renderUnmatchedTable();
+}
+
+function renderStatusTable() {
+  const q  = (document.getElementById('statusSearch')?.value || '').toLowerCase();
+  const cf = document.getElementById('statusCatFilter')?.value || '';
+
+  const filtered = lastMatchedOrders.filter(m => {
+    const ms = !q || m.row.name.toLowerCase().includes(q) || m.row.phone.includes(q);
+    const mc = !cf || m.newStatus._cat === cf;
+    return ms && mc;
+  });
+
+  const body = document.getElementById('statusMatchedBody');
+  if (!filtered.length) {
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Không có kết quả</td></tr>';
+    return;
+  }
+  body.innerHTML = filtered.map((m, i) => `<tr>
+    <td style="color:var(--muted)">${i+1}</td>
+    <td style="font-weight:600">${m.row.name||'—'}</td>
+    <td>${m.row.phone||'—'}</td>
+    <td><span class="td-product">${m.row.product||'—'}</span></td>
+    <td>${renderStatusBadge(m.oldStatus)}</td>
+    <td>${renderStatusBadge(m.newStatus)}</td>
+    <td style="color:var(--muted);font-size:11px">${m.orderCode||'—'}</td>
+  </tr>`).join('');
+}
+
+function renderUnmatchedTable() {
+  const body = document.getElementById('statusUnmatchedBody');
+  if (!lastUnmatchedOrders.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--green)">🎉 Tất cả đơn đều đối chiếu được!</td></tr>';
+    return;
+  }
+  body.innerHTML = lastUnmatchedOrders.slice(0, 100).map((r, i) => `<tr>
+    <td style="color:var(--muted)">${i+1}</td>
+    <td style="font-weight:600">${r.name||'—'}</td>
+    <td>${r.phone||'—'}</td>
+    <td><span class="td-product">${r.product||'—'}</span></td>
+    <td style="color:var(--accent)">${r._raw._status ? renderStatusBadge(r._raw._status) : '<span style="color:var(--muted)">—</span>'}</td>
+    <td><span class="status-badge pending">❓ Chưa đối chiếu</span></td>
+  </tr>`).join('') + (lastUnmatchedOrders.length > 100 ? `<tr><td colspan="6" style="text-align:center;padding:10px;color:var(--muted)">...và ${lastUnmatchedOrders.length - 100} đơn nữa</td></tr>` : '');
+}
+
+function applyStatusUpdate() {
+  if (!lastMatchedOrders.length) { alert('Chưa có dữ liệu đối chiếu!'); return; }
+
+  // Apply matched statuses
+  lastMatchedOrders.forEach(m => {
+    m.row._raw._status = m.newStatus;
+  });
+  // Set unmatched to "Chưa đối chiếu"
+  lastUnmatchedOrders.forEach(r => {
+    if (!r._raw._status) {
+      r._raw._status = { _cat: 'pending', _label: 'Chưa đối chiếu' };
+    }
+  });
+
+  // Re-render table
+  applyFilter();
+  showPage('dashboard');
+  setTimeout(() => document.getElementById('orderTable').scrollIntoView({ behavior: 'smooth' }), 200);
+
+  // Toast-like feedback
+  const banner = document.getElementById('demoBanner');
+  banner.classList.remove('hidden');
+  banner.style.background = 'rgba(62,207,142,0.08)';
+  banner.style.borderColor = 'rgba(62,207,142,0.4)';
+  banner.style.color = 'var(--green)';
+  banner.querySelector('span').innerHTML = `✅ <strong>Đã cập nhật trạng thái</strong> cho ${lastMatchedOrders.length} đơn. ${lastUnmatchedOrders.length} đơn chưa đối chiếu được.`;
+  setTimeout(() => {
+    banner.classList.add('hidden');
+    banner.removeAttribute('style');
+  }, 5000);
+}
+
+function exportUnmatchedStatus() {
+  if (!lastUnmatchedOrders.length) { alert('Không có đơn chưa đối chiếu!'); return; }
+  if (typeof XLSX === 'undefined') { alert('Thư viện XLSX chưa tải!'); return; }
+  const rows = lastUnmatchedOrders.map(r => ({
+    'Họ tên': r.name, 'SĐT': r.phone, 'Sản phẩm': r.product,
+    'Giá': r.price, 'Địa chỉ': r.address, 'Thời gian': r.time,
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Chưa đối chiếu');
+  XLSX.writeFile(wb, `don-chua-doi-chieu-${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+function resetStatusUpload() {
+  lastMatchedOrders = []; lastUnmatchedOrders = [];
+  document.getElementById('statusResultSection').style.display = 'none';
+  document.getElementById('ssStatusInfo').style.display = 'none';
+  document.getElementById('vtStatusInfo').style.display = 'none';
+  document.getElementById('ssStatusFile').value = '';
+  document.getElementById('vtStatusFile').value = '';
+}
+
+
+// ── Sheet Config ──
+const SHEET_URL_KEY = 'admin_sheet_url';
+
+function openSheetConfig() {
+  document.getElementById('sheetUrlInput').value = SHEET_URL_CURRENT;
+  document.getElementById('sheetTestResult').style.display = 'none';
+  document.getElementById('sheetConfigModal').classList.add('show');
+}
+function closeSheetConfig() {
+  document.getElementById('sheetConfigModal').classList.remove('show');
+}
+async function testSheetUrl() {
+  const url = document.getElementById('sheetUrlInput').value.trim();
+  const el = document.getElementById('sheetTestResult');
+  el.style.display = 'block';
+  el.style.color = 'var(--muted)';
+  el.textContent = '⏳ Đang test kết nối JSONP...';
+  try {
+    const data = await fetchJSONP(url);
+    if (Array.isArray(data)) {
+      el.textContent = `✅ Kết nối thành công! Tìm thấy ${data.length} đơn hàng.`;
+      el.style.color = 'var(--green)';
+    } else {
+      el.textContent = `⚠️ Kết nối được nhưng Apps Script trả về sai format: ${JSON.stringify(data).slice(0,100)}`;
+      el.style.color = 'var(--accent)';
+    }
+  } catch(e) {
+    el.innerHTML = `❌ Lỗi: ${e.message}<br><small>→ Cần cập nhật Apps Script để hỗ trợ JSONP (xem hướng dẫn)</small>`;
+    el.style.color = 'var(--red)';
+  }
+}
+function saveSheetUrl() {
+  const url = document.getElementById('sheetUrlInput').value.trim();
+  if (!url.startsWith('https://script.google.com')) {
+    alert('URL không hợp lệ! Phải bắt đầu bằng https://script.google.com');
+    return;
+  }
+  SHEET_URL_CURRENT = url;
+  localStorage.setItem(SHEET_URL_KEY, url);
+  closeSheetConfig();
+  loadData();
+}
+
+// ═══════════════════════════════════════
+//  FETCH — dùng allorigins proxy bypass CORS
+// ═══════════════════════════════════════
+async function fetchJSONP(url) {
+  // allorigins.win là proxy công khai, luôn bypass được CORS của Google
+  const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+  console.log('[fetch] Using allorigins proxy');
+  const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
+  if (!res.ok) throw new Error('Proxy HTTP ' + res.status);
+  const wrapper = await res.json();
+  const data = JSON.parse(wrapper.contents);
+  if (!Array.isArray(data)) throw new Error('Dữ liệu không phải mảng: ' + JSON.stringify(data).slice(0,100));
+  return data;
+}
+
+
+function copyAppsScriptCode() {
+  const code = `function doGet(e) {
+  var callback = e.parameter.callback;
+  var data = getSheetData();
+  var json = JSON.stringify(data);
+  if (callback) {
+    return ContentService
+      .createTextOutput(callback + '(' + json + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService
+    .createTextOutput(json)
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+  navigator.clipboard.writeText(code).then(() => {
+    alert('Đã copy code Apps Script!');
+  });
+}
 </script>
+
+<!-- ══ Sheet Config Modal ══ -->
+<div class="modal-overlay" id="sheetConfigModal">
+  <div class="modal" style="max-width:560px;">
+    <h3>⚙️ Cấu hình Google Sheet URL</h3>
+    <p>Nhập URL deploy từ Google Apps Script. App dùng <strong style="color:var(--accent)">JSONP</strong> để bypass CORS — cần cập nhật Apps Script để hỗ trợ tham số <code style="background:var(--bg);padding:1px 6px;border-radius:3px;font-size:11px">callback</code>.</p>
+    <label style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;">Apps Script URL</label>
+    <input type="text" id="sheetUrlInput" placeholder="https://script.google.com/macros/s/..." style="font-size:12px;">
+    <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.8;">
+      <strong style="color:var(--text)">Hướng dẫn lấy URL:</strong><br>
+      1. Mở Google Sheet → Extensions → Apps Script<br>
+      2. Deploy → New deployment → Web app<br>
+      3. Execute as: <strong>Me</strong> · Who has access: <strong>Anyone</strong><br>
+      4. Copy URL và paste vào ô trên
+    </div>
+    <div style="margin-top:10px;padding:10px 12px;background:rgba(240,90,90,0.06);border:1px solid rgba(240,90,90,0.2);border-radius:6px;font-size:11px;color:var(--red);" id="sheetTestResult" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn-save" onclick="saveSheetUrl()">💾 Lưu & Kết nối</button>
+      <button class="btn-save" onclick="testSheetUrl()" style="background:var(--blue);color:#fff;">🔌 Test kết nối</button>
+      <button class="btn-cancel" onclick="closeSheetConfig()">Huỷ</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
